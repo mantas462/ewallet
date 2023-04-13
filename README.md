@@ -58,4 +58,5 @@ The implementation was done in one microservice with the standard layered struct
 - Remove Spring Data JPA and have querying API like dslContext
 - Implement pessimistic or optimistic lock when fetching account balances
 - Add Swagger-UI
+- Fix response handler for exceptions
 - ...
