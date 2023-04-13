@@ -23,7 +23,7 @@
 
 #### Description of implementation
 
-The implementation was done in one microservice with the standard layered structure of it: controller, service and DAO. Microservice has 5 different endpoints for different purposes: to save customer, to get customer, to deposit funds, to withdraw funds and to make funds transaction. Each controller is responsible for communication with external applications. Each service is responsible for business logic. Each DAO is responsible to retrieve data from database.
+The implementation was done as a single microservice with a standard layered structure consisting of a controller, service, and DAO. The microservice has 5 different endpoints for various purposes: saving customer information, retrieving customer information, depositing funds, withdrawing funds, and making fund transactions. Each controller is responsible for communication with external applications, each service handles the business logic, and each DAO is responsible for retrieving data from the database.
 
 #### Launch requirements
 
@@ -48,7 +48,7 @@ The implementation was done in one microservice with the standard layered struct
 
 #### Improvements needed for application
 
-- Finish all the tests. All classes for tests are created and needed tests but they are not fully completed. Needed tests are marked with `TODO`
+- Finish all the tests. All classes for tests are created but not all of the scenarios are covered. Needed tests are marked with `TODO`
 - Make endpoints secure and not accessible by everyone
 - Use cache, e.g. CaffeineCache for some of the cases, e.g. daily withdraw limit
 - Finish nice to have requirements
