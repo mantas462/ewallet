@@ -55,6 +55,6 @@ The implementation was done in one microservice with the standard layered struct
 - Add logging functionality to the classes
 - Complete postman collections with all cases
 - Remove Spring Data JPA and have querying API like dslContext
-- Implement pessimistic of optimistic lock when fetching account balances
+- Implement pessimistic or optimistic lock when fetching account balances
 - Add Swagger-UI
 - ...
