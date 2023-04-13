@@ -59,4 +59,6 @@ The implementation was done as a single microservice with a standard layered str
 - Implement pessimistic or optimistic lock when fetching account balances
 - Add Swagger-UI
 - Fix response handler for exceptions
+- Make separate Customer microserice
+- Make separate Gateway microservice
 - ...
