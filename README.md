@@ -38,6 +38,7 @@ The implementation was done in one microservice with the standard layered struct
 #### Application access links
 
 - Database access link: http://localhost:8080/h2-console (username: sa, password: password)
+- Postman collections: https://github.com/mantas462/ewallet-postman-collections for testing purposes
 - Access links of endpoints:
   - Create customer: http://localhost:8080/api/v1/customer
   - Get customer: http://localhost:8080/api/v1/customer/{uuid}
