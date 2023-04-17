@@ -1,8 +1,7 @@
 package ewallet.service.customer;
 
-import ewallet.dto.customer.CreateCustomerRequestDto;
-import ewallet.dto.customer.CreateCustomerResponseDto;
-import ewallet.dto.ewallet.SaveEwalletDto;
+import ewallet.dto.customer.internal.CustomerDto;
+import ewallet.dto.ewallet.internal.EwalletDto;
 import ewallet.entity.customer.Customer;
 import ewallet.repository.customer.CustomerDao;
 import ewallet.service.ewallet.EwalletService;
@@ -24,15 +23,15 @@ public class CustomerService {
     private EwalletService ewalletService;
 
     @Transactional
-    public CreateCustomerResponseDto save(CreateCustomerRequestDto createCustomerRequestDto) {
+    public CustomerDto save(CustomerDto customerDto) {
 
-        Customer customer = CustomerMapper.toEntity(createCustomerRequestDto);
-        SaveEwalletDto saveEwalletDto = EwalletMapper.toDto(customer.getEwalletUuid());
-
+        Customer customer = CustomerMapper.toEntity(customerDto);
         Customer savedCustomer = customerDao.save(customer);
-        ewalletService.save(saveEwalletDto);
 
-        return CustomerMapper.toCreateCustomerResponseDto(savedCustomer);
+        EwalletDto ewalletDto = EwalletMapper.createDtoWithCustomerUuid(customer.getUuid());
+        ewalletService.save(ewalletDto);
+
+        return CustomerMapper.toDto(savedCustomer);
     }
 
     public Customer get(UUID uuid) {

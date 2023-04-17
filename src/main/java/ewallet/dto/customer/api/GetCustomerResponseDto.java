@@ -1,14 +1,20 @@
-package ewallet.dto.customer;
+package ewallet.dto.customer.api;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.UUID;
+
 @AllArgsConstructor
-@Data
 @Builder
-public class CreateCustomerRequestDto {
+@Data
+public class GetCustomerResponseDto {
+
+    @NotNull
+    private final UUID uuid;
 
     @NotBlank
     private final String firstName;

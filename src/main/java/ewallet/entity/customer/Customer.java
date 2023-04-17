@@ -28,7 +28,4 @@ public class Customer {
 
     @Column(nullable = false, unique = true)
     private String email;
-
-    @Column(nullable = false)
-    private UUID ewalletUuid;
 }

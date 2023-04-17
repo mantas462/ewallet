@@ -1,11 +1,12 @@
 package ewallet.util.mapper.operation;
 
-import ewallet.dto.ewallet.DepositEwalletRequestDto;
-import ewallet.dto.ewallet.MakeTransactionEwalletRequestDto;
-import ewallet.dto.ewallet.WithdrawEwalletRequestDto;
-import ewallet.dto.operation.OperationStatusDto;
-import ewallet.dto.operation.OperationTypeDto;
-import ewallet.dto.operation.SaveOperationDto;
+import ewallet.dto.ewallet.api.DepositEwalletRequestDto;
+import ewallet.dto.ewallet.api.MakeOperationResponseDto;
+import ewallet.dto.ewallet.api.MakeTransactionEwalletRequestDto;
+import ewallet.dto.ewallet.api.WithdrawEwalletRequestDto;
+import ewallet.dto.operation.internal.OperationDto;
+import ewallet.dto.operation.internal.OperationStatusDto;
+import ewallet.dto.operation.internal.OperationTypeDto;
 import ewallet.entity.operation.Operation;
 import ewallet.entity.operation.OperationStatus;
 import ewallet.entity.operation.OperationType;
@@ -14,50 +15,71 @@ import java.util.UUID;
 
 public final class OperationMapper {
 
-    public static Operation toEntity(SaveOperationDto saveOperationDto) {
+    public static OperationDto toDto(Operation operation) {
+
+        return OperationDto.builder()
+                .uuid(operation.getUuid())
+                .amount(operation.getAmount())
+                .operationType(OperationTypeDto.valueOf(operation.getOperationType().toString()))
+                .description(operation.getDescription())
+                .ewalletUuid(operation.getEwalletUuid())
+                .destinationWalletUuid(operation.getDestinationWalletUuid())
+                .operationStatus(OperationStatusDto.valueOf(operation.getOperationStatus().toString()))
+                .suspicious(operation.isSuspicious())
+                .createdDate(operation.getCreatedDate())
+                .build();
+    }
+
+    public static Operation createEntity(OperationDto operationDto) {
 
         return Operation.builder()
                 .uuid(UUID.randomUUID())
-                .operationType(OperationType.valueOf(saveOperationDto.getOperationTypeDto().toString()))
-                .amount(saveOperationDto.getAmount())
-                .description(saveOperationDto.getDescription())
-                .ewalletUuid(saveOperationDto.getWalletUuid())
-                .destinationWalletUuid(saveOperationDto.getDestinationWalletUuid())
-                .operationStatus(OperationStatus.valueOf(saveOperationDto.getOperationStatusDto().toString()))
+                .operationType(OperationType.valueOf(operationDto.getOperationType().toString()))
+                .amount(operationDto.getAmount())
+                .description(operationDto.getDescription())
+                .ewalletUuid(operationDto.getEwalletUuid())
+                .destinationWalletUuid(operationDto.getDestinationWalletUuid())
+                .operationStatus(OperationStatus.valueOf(operationDto.getOperationStatus().toString()))
+                .suspicious(operationDto.isSuspicious())
                 .build();
     }
 
-    public static SaveOperationDto toSaveDto(UUID uuid, DepositEwalletRequestDto depositEwalletRequestDto, OperationStatusDto operationStatusDto) {
+    public static MakeOperationResponseDto toMakeOperationResponseDto(OperationDto operation) {
 
-        return SaveOperationDto.builder()
+        return MakeOperationResponseDto.builder()
+                .uuid(operation.getUuid())
+                .status(operation.getOperationStatus())
+                .build();
+    }
+
+    public static OperationDto toOperationDto(UUID uuid, DepositEwalletRequestDto depositEwalletRequestDto) {
+
+        return OperationDto.builder()
+                .ewalletUuid(uuid)
                 .amount(depositEwalletRequestDto.getAmount())
-                .operationTypeDto(OperationTypeDto.DEPOSIT)
+                .operationType(OperationTypeDto.DEPOSIT)
                 .description(depositEwalletRequestDto.getDescription())
-                .walletUuid(uuid)
-                .operationStatusDto(operationStatusDto)
                 .build();
     }
 
-    public static SaveOperationDto toSaveDto(UUID uuid, WithdrawEwalletRequestDto withdrawEwalletRequestDto, OperationStatusDto operationStatusDto) {
+    public static OperationDto toOperationDto(UUID uuid, MakeTransactionEwalletRequestDto makeTransactionEwalletRequestDto) {
 
-        return SaveOperationDto.builder()
-                .amount(withdrawEwalletRequestDto.getAmount())
-                .operationTypeDto(OperationTypeDto.WITHDRAWAL)
-                .description(withdrawEwalletRequestDto.getDescription())
-                .walletUuid(uuid)
-                .operationStatusDto(operationStatusDto)
-                .build();
-    }
-
-    public static SaveOperationDto toSaveDto(UUID uuid, MakeTransactionEwalletRequestDto makeTransactionEwalletRequestDto, OperationStatusDto operationStatusDto) {
-
-        return SaveOperationDto.builder()
+        return OperationDto.builder()
+                .ewalletUuid(uuid)
                 .amount(makeTransactionEwalletRequestDto.getAmount())
-                .operationTypeDto(OperationTypeDto.TRANSACTION)
+                .operationType(OperationTypeDto.TRANSACTION)
                 .description(makeTransactionEwalletRequestDto.getDescription())
-                .walletUuid(uuid)
                 .destinationWalletUuid(makeTransactionEwalletRequestDto.getDestinationWalletUuid())
-                .operationStatusDto(operationStatusDto)
+                .build();
+    }
+
+    public static OperationDto toOperationDto(UUID uuid, WithdrawEwalletRequestDto withdrawEwalletRequestDto) {
+
+        return OperationDto.builder()
+                .ewalletUuid(uuid)
+                .amount(withdrawEwalletRequestDto.getAmount())
+                .operationType(OperationTypeDto.WITHDRAWAL)
+                .description(withdrawEwalletRequestDto.getDescription())
                 .build();
     }
 }
