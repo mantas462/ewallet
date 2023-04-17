@@ -1,8 +1,8 @@
 package ewallet.service.operation;
 
-import ewallet.dto.operation.SaveOperationDto;
+import ewallet.dto.operation.internal.OperationDto;
+import ewallet.dto.operation.internal.OperationTypeDto;
 import ewallet.entity.operation.Operation;
-import ewallet.entity.operation.OperationType;
 import ewallet.repository.operation.OperationDao;
 import ewallet.util.mapper.operation.OperationMapper;
 import lombok.AllArgsConstructor;
@@ -20,32 +20,37 @@ public class OperationService {
 
     private OperationDao operationDao;
 
-    private static final BigDecimal FLAGGED_AMOUNT = BigDecimal.valueOf(10000);
+    private static final int DAYS_AFTER_COMPLETED_OPERATION = -1;
 
-    public void save(SaveOperationDto saveOperationDto) {
+    private static final BigDecimal SUSPICIOUS_AMOUNT = BigDecimal.valueOf(10000);
 
-        Operation operation = OperationMapper.toEntity(saveOperationDto);
+    public OperationDto save(OperationDto operationDto) {
 
-        if (isSuspicious(operation)) {
-            operation.setSuspicious(true);
+        if (isSuspicious(operationDto)) {
+            operationDto.setSuspicious(true);
         }
+        Operation operation = OperationMapper.createEntity(operationDto);
 
-        operationDao.save(operation);
+        Operation savedOperation = operationDao.save(operation);
+
+        return OperationMapper.toDto(savedOperation);
     }
 
-    public List<Operation> lastDayWithdrawalsByWalletUuid(UUID uuid) {
+    public List<OperationDto> lastDayWithdrawalsByWalletUuid(UUID uuid) {
         Timestamp timestamp = new Timestamp(System.currentTimeMillis());
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(timestamp);
-        calendar.add(Calendar.DAY_OF_MONTH, -1);
+        calendar.add(Calendar.DAY_OF_MONTH, DAYS_AFTER_COMPLETED_OPERATION);
         timestamp.setTime(calendar.getTime().getTime());
 
-        return operationDao.lastDayWithdrawalsByWalletUuid(uuid, timestamp);
+        List<Operation> operations = operationDao.lastDayWithdrawalsByWalletUuidAndLock(uuid, timestamp);
+
+        return operations.stream().map(OperationMapper::toDto).toList();
     }
 
-    private boolean isSuspicious(Operation operation) {
+    private boolean isSuspicious(OperationDto operation) {
 
-        return operation.getOperationType() == OperationType.TRANSACTION &&
-                operation.getAmount().compareTo(FLAGGED_AMOUNT) > 0;
+        return operation.getOperationType() == OperationTypeDto.TRANSACTION &&
+                operation.getAmount().compareTo(SUSPICIOUS_AMOUNT) > 0;
     }
 }

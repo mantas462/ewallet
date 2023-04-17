@@ -1,8 +1,9 @@
 package ewallet.controller.customer;
 
-import ewallet.dto.customer.CreateCustomerRequestDto;
-import ewallet.dto.customer.CreateCustomerResponseDto;
-import ewallet.dto.customer.GetCustomerResponseDto;
+import ewallet.dto.customer.api.CreateCustomerRequestDto;
+import ewallet.dto.customer.api.CreateCustomerResponseDto;
+import ewallet.dto.customer.api.GetCustomerResponseDto;
+import ewallet.dto.customer.internal.CustomerDto;
 import ewallet.entity.customer.Customer;
 import ewallet.service.customer.CustomerService;
 import ewallet.util.api.MediaType;
@@ -27,10 +28,16 @@ public class CustomerController {
     )
     public CreateCustomerResponseDto save(@RequestBody @Validated CreateCustomerRequestDto createCustomerRequestDto) {
 
-        return customerService.save(createCustomerRequestDto);
+        CustomerDto customer = CustomerMapper.toDto(createCustomerRequestDto);
+        CustomerDto savedCustomer = customerService.save(customer);
+
+        return CustomerMapper.toCreateCustomerResponseDto(savedCustomer);
     }
 
-    @GetMapping(RestUrl.CUSTOMER_BY_UUID)
+    @GetMapping(
+            value = RestUrl.CUSTOMER_BY_UUID,
+            consumes = MediaType.GET_CUSTOMER_REQUEST
+    )
     public GetCustomerResponseDto get(@PathVariable(value = "uuid") UUID uuid) {
 
         Customer customer = customerService.get(uuid);

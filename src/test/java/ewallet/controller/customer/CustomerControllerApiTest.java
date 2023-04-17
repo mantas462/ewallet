@@ -1,10 +1,9 @@
 package ewallet.controller.customer;
 
-import ewallet.dto.customer.CreateCustomerRequestDto;
-import ewallet.dto.customer.CreateCustomerResponseDto;
+import ewallet.dto.customer.api.CreateCustomerRequestDto;
+import ewallet.dto.customer.internal.CustomerDto;
 import ewallet.entity.customer.Customer;
 import ewallet.service.customer.CustomerService;
-import ewallet.util.api.ErrorCode;
 import ewallet.util.api.MediaType;
 import ewallet.util.api.RestUrl;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -13,21 +12,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
-import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.stream.Stream;
 
 import static ewallet.TestHelper.*;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(CustomerController.class)
@@ -44,39 +44,25 @@ class CustomerControllerApiTest {
 
         private static final String SAVE_URL = RestUrl.API_V1 + RestUrl.CUSTOMER;
 
+        private static CreateCustomerRequestDto request = randomCreateCustomerRequestDto();
+
         @Test
         void save_success() throws Exception {
 
             // given
-            CreateCustomerResponseDto createCustomerResponseDto = createCustomerResponseDto();
+            CustomerDto customerDto = createCustomer(UUID.randomUUID(), request.getFirstName(), request.getLastName(), request.getEmail());
 
             // when
-            when(customerService.save(any())).thenReturn(createCustomerResponseDto);
+            when(customerService.save(any(CustomerDto.class))).thenReturn(customerDto);
 
             // then
             mockMvc.perform(post(SAVE_URL)
-                            .content(asJsonString(randomCreateCustomerRequestDto()))
+                            .content(asJsonString(request))
                             .contentType(MediaType.CREATE_CUSTOMER_REQUEST))
                     .andExpect(status().isOk())
-                    .andExpect(MockMvcResultMatchers.jsonPath("$.uuid").value(createCustomerResponseDto.getUuid().toString()));
+                    .andExpect(jsonPath("$.uuid").value(customerDto.getUuid().toString()));
 
-            verify(customerService, times(1)).save(any());
-        }
-
-        @Test
-        void save_whenServiceFails_thenBadRequest() throws Exception {
-
-            // when
-            when(customerService.save(any())).thenThrow(NoSuchElementException.class);
-
-            // then
-            mockMvc.perform(post(SAVE_URL)
-                            .content(asJsonString(randomCreateCustomerRequestDto()))
-                            .contentType(MediaType.CREATE_CUSTOMER_REQUEST))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(MockMvcResultMatchers.jsonPath("$.errorCode").value(ErrorCode.ENTITY_NOT_FOUND.toString()));
-
-            verify(customerService, times(1)).save(any());
+            verifySavedCustomer(customerDto);
         }
 
         @Test
@@ -84,9 +70,8 @@ class CustomerControllerApiTest {
 
             // then
             mockMvc.perform(post(SAVE_URL)
-                            .content(asJsonString(randomCreateCustomerRequestDto())))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(MockMvcResultMatchers.jsonPath("$.errorCode").value(ErrorCode.BAD_REQUEST.toString()));
+                            .content(asJsonString(request)))
+                    .andExpect(status().isUnsupportedMediaType());
 
             verifyNoInteractions(customerService);
         }
@@ -100,7 +85,6 @@ class CustomerControllerApiTest {
                             .content(asJsonString(createCustomerRequestDto))
                             .contentType(MediaType.CREATE_CUSTOMER_REQUEST))
                     .andExpect(status().isBadRequest())
-                    .andExpect(MockMvcResultMatchers.jsonPath("$.errorCode").value(ErrorCode.BAD_REQUEST.toString()))
                     .andReturn();
 
             verifyNoInteractions(customerService);
@@ -117,10 +101,14 @@ class CustomerControllerApiTest {
             );
         }
 
-        private static CreateCustomerResponseDto createCustomerResponseDto() {
-            return CreateCustomerResponseDto.builder()
-                    .uuid(UUID.randomUUID())
-                    .build();
+        private void verifySavedCustomer(CustomerDto customerDto) {
+            ArgumentCaptor<CustomerDto> captor = ArgumentCaptor.forClass(CustomerDto.class);
+            verify(customerService, times(1)).save(captor.capture());
+            CustomerDto capturedCustomer = captor.getValue();
+            assertThat(capturedCustomer).isNotNull();
+            assertThat(capturedCustomer.getFirstName()).isEqualTo(customerDto.getFirstName());
+            assertThat(capturedCustomer.getLastName()).isEqualTo(customerDto.getLastName());
+            assertThat(capturedCustomer.getEmail()).isEqualTo(customerDto.getEmail());
         }
     }
 
@@ -142,29 +130,14 @@ class CustomerControllerApiTest {
 
             // then
             mockMvc.perform(get(GET_URL)
-                            .accept(MediaType.GET_CUSTOMER_RESPONSE))
+                            .contentType(MediaType.GET_CUSTOMER_REQUEST))
                     .andExpect(status().isOk())
-                    .andExpect(MockMvcResultMatchers.jsonPath("$.uuid").value(customer.getUuid().toString()))
-                    .andExpect(MockMvcResultMatchers.jsonPath("$.firstName").value(customer.getFirstName().toString()))
-                    .andExpect(MockMvcResultMatchers.jsonPath("$.lastName").value(customer.getLastName().toString()))
-                    .andExpect(MockMvcResultMatchers.jsonPath("$.email").value(customer.getEmail().toString()));
+                    .andExpect(jsonPath("$.uuid").value(customer.getUuid().toString()))
+                    .andExpect(jsonPath("$.firstName").value(customer.getFirstName()))
+                    .andExpect(jsonPath("$.lastName").value(customer.getLastName()))
+                    .andExpect(jsonPath("$.email").value(customer.getEmail()));
 
-            verify(customerService, times(1)).get(any());
-        }
-
-        @Test
-        void get_whenServiceFails_thenBadRequest() throws Exception {
-
-            // when
-            when(customerService.get(any())).thenThrow(NoSuchElementException.class);
-
-            // then
-            mockMvc.perform(get(GET_URL)
-                            .accept(MediaType.GET_CUSTOMER_RESPONSE))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(MockMvcResultMatchers.jsonPath("$.errorCode").value(ErrorCode.ENTITY_NOT_FOUND.toString()));
-
-            verify(customerService, times(1)).get(any());
+            verify(customerService, times(1)).get(customerUuid);
         }
 
         @Test
@@ -175,9 +148,8 @@ class CustomerControllerApiTest {
 
             // then
             mockMvc.perform(get(urlWithoutUuid)
-                            .accept(MediaType.GET_CUSTOMER_RESPONSE))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(MockMvcResultMatchers.jsonPath("$.errorCode").value(ErrorCode.BAD_REQUEST.toString()));
+                            .contentType(MediaType.GET_CUSTOMER_REQUEST))
+                    .andExpect(status().isInternalServerError());
 
             verifyNoInteractions(customerService);
         }

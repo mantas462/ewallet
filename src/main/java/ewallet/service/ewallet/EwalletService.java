@@ -1,17 +1,12 @@
 package ewallet.service.ewallet;
 
-import ewallet.dto.ewallet.DepositEwalletRequestDto;
-import ewallet.dto.ewallet.MakeTransactionEwalletRequestDto;
-import ewallet.dto.ewallet.SaveEwalletDto;
-import ewallet.dto.ewallet.WithdrawEwalletRequestDto;
-import ewallet.dto.operation.OperationStatusDto;
-import ewallet.dto.operation.SaveOperationDto;
+import ewallet.dto.ewallet.internal.EwalletDto;
+import ewallet.dto.operation.internal.OperationDto;
+import ewallet.dto.operation.internal.OperationStatusDto;
 import ewallet.entity.ewallet.Ewallet;
-import ewallet.entity.operation.Operation;
 import ewallet.repository.ewallet.EwalletDao;
 import ewallet.service.operation.OperationService;
 import ewallet.util.mapper.ewallet.EwalletMapper;
-import ewallet.util.mapper.operation.OperationMapper;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,139 +29,117 @@ public class EwalletService {
 
     private static final BigDecimal DAILY_WITHDRAW_LIMIT = BigDecimal.valueOf(5000);
 
-    public void save(SaveEwalletDto saveEwalletDto) {
+    public void save(EwalletDto ewalletDto) {
 
-        Ewallet ewallet = EwalletMapper.toEntity(saveEwalletDto);
+        Ewallet ewallet = EwalletMapper.createEntity(ewalletDto);
         ewalletDao.save(ewallet);
     }
 
     @Transactional
-    public void deposit(UUID uuid, DepositEwalletRequestDto request) {
+    public OperationDto deposit(OperationDto operation) {
 
-        BigDecimal amount = request.getAmount();
+        BigDecimal amount = operation.getAmount();
         if (!isAmountValid(amount)) {
-            declineDepositOperation(uuid, request);
-            return;
+            return declineOperationAndGet(operation);
         }
 
-        Optional<Ewallet> optionalEwallet = ewalletDao.findById(uuid);
+        Optional<Ewallet> optionalEwallet = ewalletDao.findByIdAndLock(operation.getEwalletUuid());
         if (optionalEwallet.isEmpty()) {
-            declineDepositOperation(uuid, request);
-            return;
+            return declineOperationAndGet(operation);
         }
 
         Ewallet ewallet = optionalEwallet.get();
-        ewallet.deposit(amount);
+        EwalletDto ewalletDto = EwalletMapper.toDto(ewallet);
+        ewalletDto.deposit(amount);
+        ewalletDao.save(EwalletMapper.toEntity(ewalletDto));
 
-        SaveOperationDto saveOperationDto = OperationMapper.toSaveDto(uuid, request, OperationStatusDto.COMPLETED);
-        saveEwallets(saveOperationDto, List.of(ewallet));
-    }
-
-    private void declineDepositOperation(UUID uuid, DepositEwalletRequestDto request) {
-
-        SaveOperationDto saveOperationDto = OperationMapper.toSaveDto(uuid, request, OperationStatusDto.DECLINED);
-        operationService.save(saveOperationDto);
+        operation.setOperationStatus(OperationStatusDto.COMPLETED);
+        return operationService.save(operation);
     }
 
     @Transactional
-    public void withdraw(UUID uuid, WithdrawEwalletRequestDto request) {
+    public OperationDto withdraw(OperationDto operation) {
 
-        BigDecimal amount = request.getAmount();
-
-        if (!isAmountValid(amount)) {
-            declineWithdrawOperation(uuid, request);
-            return;
+        BigDecimal amount = operation.getAmount();
+        if (!isAmountValid(amount) || amountIsBiggerThanDailyLimit(amount)) {
+            return declineOperationAndGet(operation);
         }
 
-        Optional<Ewallet> optionalEwallet = ewalletDao.findById(uuid);
-
+        Optional<Ewallet> optionalEwallet = ewalletDao.findByIdAndLock(operation.getEwalletUuid());
         if (optionalEwallet.isEmpty()) {
-            declineWithdrawOperation(uuid, request);
-            return;
+            return declineOperationAndGet(operation);
         }
 
         Ewallet ewallet = optionalEwallet.get();
-
-        if (!ewallet.isEnoughBalance(amount) || exceededDailyLimit(ewallet.getUuid())) {
-            declineWithdrawOperation(uuid, request);
-            return;
+        EwalletDto ewalletDto = EwalletMapper.toDto(ewallet);
+        if (!ewalletDto.isEnoughBalance(amount) || amountIsBiggerThanDailyLimit(ewallet.getUuid())) {
+            return declineOperationAndGet(operation);
         }
 
-        ewallet.withdraw(amount);
+        ewalletDto.withdraw(amount);
+        ewalletDao.save(EwalletMapper.toEntity(ewalletDto));
 
-        SaveOperationDto saveOperationDto = OperationMapper.toSaveDto(uuid, request, OperationStatusDto.COMPLETED);
-        saveEwallets(saveOperationDto, List.of(ewallet));
+        operation.setOperationStatus(OperationStatusDto.COMPLETED);
+        return operationService.save(operation);
     }
 
-    private void declineWithdrawOperation(UUID uuid, WithdrawEwalletRequestDto request) {
+    private boolean amountIsBiggerThanDailyLimit(BigDecimal amount) {
 
-        SaveOperationDto saveOperationDto = OperationMapper.toSaveDto(uuid, request, OperationStatusDto.DECLINED);
-        operationService.save(saveOperationDto);
-    }
-
-    private boolean exceededDailyLimit(UUID uuid) {
-
-        List<Operation> operations = operationService.lastDayWithdrawalsByWalletUuid(uuid);
-        BigDecimal lastDayOperationsAmount = operations.stream()
-                .map(operation -> operation.getAmount())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        if (lastDayOperationsAmount.compareTo(DAILY_WITHDRAW_LIMIT) > 0) {
-            return true;
-        }
-        return false;
+        return amount.compareTo(DAILY_WITHDRAW_LIMIT) > 0;
     }
 
     @Transactional
-    public void makeTransaction(UUID uuid, MakeTransactionEwalletRequestDto request) {
+    public OperationDto makeTransaction(OperationDto operation) {
 
-        BigDecimal amount = request.getAmount();
-
+        BigDecimal amount = operation.getAmount();
         if (!isTransactionRequestValid(amount)) {
-            declineTransactionOperation(uuid, request);
-            return;
+            return declineOperationAndGet(operation);
         }
 
-        Optional<Ewallet> optionalSourceEwallet = ewalletDao.findById(uuid);
-
+        Optional<Ewallet> optionalSourceEwallet = ewalletDao.findByIdAndLock(operation.getEwalletUuid());
         if (optionalSourceEwallet.isEmpty()) {
-            declineTransactionOperation(uuid, request);
-            return;
+            return declineOperationAndGet(operation);
         }
 
         Ewallet sourceEwallet = optionalSourceEwallet.get();
-
-        if (!sourceEwallet.isEnoughBalance(amount)) {
-            declineTransactionOperation(uuid, request);
-            return;
+        EwalletDto sourceEwalletDto = EwalletMapper.toDto(sourceEwallet);
+        if (!sourceEwalletDto.isEnoughBalance(amount)) {
+            return declineOperationAndGet(operation);
         }
 
-        Optional<Ewallet> optionalDestinationEwallet = ewalletDao.findById(uuid);
-
+        Optional<Ewallet> optionalDestinationEwallet = ewalletDao.findByIdAndLock(operation.getDestinationWalletUuid());
         if (optionalDestinationEwallet.isEmpty()) {
-            declineTransactionOperation(uuid, request);
-            return;
+            return declineOperationAndGet(operation);
         }
 
-        Ewallet destinationWallet = optionalDestinationEwallet.get();
+        Ewallet destinationEwallet = optionalDestinationEwallet.get();
+        EwalletDto destinationEwalletDto = EwalletMapper.toDto(destinationEwallet);
 
-        sourceEwallet.withdraw(amount);
-        destinationWallet.deposit(amount);
+        sourceEwalletDto.withdraw(amount);
+        destinationEwalletDto.deposit(amount);
 
-        SaveOperationDto saveOperationDto = OperationMapper.toSaveDto(uuid, request, OperationStatusDto.COMPLETED);
-        saveEwallets(saveOperationDto, List.of(sourceEwallet, destinationWallet));
+        Ewallet sourceEwalletToSave = EwalletMapper.toEntity(sourceEwalletDto);
+        Ewallet destinationEwalletToSave = EwalletMapper.toEntity(destinationEwalletDto);
+        ewalletDao.saveAll(List.of(sourceEwalletToSave, destinationEwalletToSave));
+
+        operation.setOperationStatus(OperationStatusDto.COMPLETED);
+        return operationService.save(operation);
     }
 
-    private void saveEwallets(SaveOperationDto saveOperationDto, List<Ewallet> wallets) {
+    private boolean amountIsBiggerThanDailyLimit(UUID uuid) {
 
-        operationService.save(saveOperationDto);
-        ewalletDao.saveAll(wallets);
+        List<OperationDto> operations = operationService.lastDayWithdrawalsByWalletUuid(uuid);
+        BigDecimal lastDayOperationsAmount = operations.stream()
+                .map(OperationDto::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return lastDayOperationsAmount.compareTo(DAILY_WITHDRAW_LIMIT) > 0;
     }
 
+    private OperationDto declineOperationAndGet(OperationDto operationDto) {
 
-    private void declineTransactionOperation(UUID uuid, MakeTransactionEwalletRequestDto request) {
-        SaveOperationDto saveOperationDto = OperationMapper.toSaveDto(uuid, request, OperationStatusDto.DECLINED);
-        operationService.save(saveOperationDto);
+        operationDto.setOperationStatus(OperationStatusDto.DECLINED);
+        return operationService.save(operationDto);
     }
 
     private boolean isTransactionRequestValid(BigDecimal amount) {
@@ -182,10 +155,7 @@ public class EwalletService {
         BigInteger fractionalPart = amount.remainder(BigDecimal.ONE).unscaledValue();
         int fractionalDigitsQuantity = getFractionalDigitsQuantity(fractionalPart);
 
-        if (fractionalDigitsQuantity > 2) {
-            return false;
-        }
-        return true;
+        return fractionalDigitsQuantity <= 2;
     }
 
     private static int getFractionalDigitsQuantity(BigInteger fractionalPart) {

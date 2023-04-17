@@ -24,26 +24,6 @@ public class Ewallet {
     @Column(nullable = false)
     private BigDecimal balance;
 
-    public boolean isEnoughBalance(BigDecimal amount) {
-
-        return balance.compareTo(amount) > 0;
-    }
-
-    public Ewallet withdraw(BigDecimal amount) {
-
-        if (balance.compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Amount=[%s] is bigger than the ewallet balance=[%s]".formatted(amount, balance));
-        }
-
-        BigDecimal newBalance = balance.subtract(amount).setScale(2);
-        setBalance(newBalance);
-        return this;
-    }
-
-    public Ewallet deposit(BigDecimal amount) {
-
-        BigDecimal newBalance = balance.add(amount).setScale(2);
-        setBalance(newBalance);
-        return this;
-    }
+    @Column(nullable = false)
+    private UUID customerUuid;
 }

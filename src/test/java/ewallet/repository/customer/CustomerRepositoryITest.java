@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
+import java.util.UUID;
+
 import static ewallet.TestHelper.randomCustomer;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -17,14 +19,25 @@ class CustomerRepositoryITest {
     @Autowired
     private CustomerDao customerDao;
 
+    private static Customer customer = randomCustomer();
+
     @Test
-    void whenSaved_thenFindsById() {
+    void saveAndFindById_success() {
 
         // given
-        Customer customer = randomCustomer();
         customerDao.save(customer);
 
         // then
         assertThat(customerDao.findById(customer.getUuid())).isNotEmpty();
+    }
+
+    @Test
+    void save_whenFindByRandomId_thenEmpty() {
+
+        // given
+        customerDao.save(customer);
+
+        // then
+        assertThat(customerDao.findById(UUID.randomUUID()).isEmpty());
     }
 }

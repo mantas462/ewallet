@@ -1,11 +1,14 @@
 package ewallet.controller.ewallet;
 
-import ewallet.dto.ewallet.DepositEwalletRequestDto;
-import ewallet.dto.ewallet.MakeTransactionEwalletRequestDto;
-import ewallet.dto.ewallet.WithdrawEwalletRequestDto;
+import ewallet.dto.ewallet.api.DepositEwalletRequestDto;
+import ewallet.dto.ewallet.api.MakeOperationResponseDto;
+import ewallet.dto.ewallet.api.MakeTransactionEwalletRequestDto;
+import ewallet.dto.ewallet.api.WithdrawEwalletRequestDto;
+import ewallet.dto.operation.internal.OperationDto;
 import ewallet.service.ewallet.EwalletService;
 import ewallet.util.api.MediaType;
 import ewallet.util.api.RestUrl;
+import ewallet.util.mapper.operation.OperationMapper;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
@@ -23,22 +26,31 @@ public class EwalletController {
 
     @PutMapping(value = RestUrl.EWALLET_BY_UUID_DEPOSIT,
             consumes = MediaType.DEPOSIT_EWALLET_REQUEST)
-    public void deposit(@PathVariable(value = "uuid") UUID uuid, @RequestBody @Validated DepositEwalletRequestDto depositEwalletRequestDto) {
+    public MakeOperationResponseDto deposit(@PathVariable(value = "uuid") UUID uuid, @RequestBody @Validated DepositEwalletRequestDto request) {
 
-        ewalletService.deposit(uuid, depositEwalletRequestDto);
+        OperationDto operation = OperationMapper.toOperationDto(uuid, request);
+        OperationDto depositOperation = ewalletService.deposit(operation);
+
+        return OperationMapper.toMakeOperationResponseDto(depositOperation);
     }
 
     @PutMapping(value = RestUrl.EWALLET_BY_UUID_WITHDRAWAL,
             consumes = MediaType.WITHDRAW_EWALLET_REQUEST)
-    public void withdraw(@PathVariable(value = "uuid") UUID uuid, @RequestBody @Validated WithdrawEwalletRequestDto withdrawEwalletRequestDto) {
+    public MakeOperationResponseDto withdraw(@PathVariable(value = "uuid") UUID uuid, @RequestBody @Validated WithdrawEwalletRequestDto request) {
 
-        ewalletService.withdraw(uuid, withdrawEwalletRequestDto);
+        OperationDto operation = OperationMapper.toOperationDto(uuid, request);
+        OperationDto depositOperation = ewalletService.withdraw(operation);
+
+        return OperationMapper.toMakeOperationResponseDto(depositOperation);
     }
 
     @PutMapping(value = RestUrl.EWALLET_BY_UUID_TRANSACTION,
             consumes = MediaType.MAKE_TRANSACTION_EWALLET_REQUEST)
-    public void makeTransaction(@PathVariable(value = "uuid") UUID uuid, @RequestBody @Validated MakeTransactionEwalletRequestDto makeTransactionEwalletRequestDto) {
+    public MakeOperationResponseDto makeTransaction(@PathVariable(value = "uuid") UUID uuid, @RequestBody @Validated MakeTransactionEwalletRequestDto request) {
 
-        ewalletService.makeTransaction(uuid, makeTransactionEwalletRequestDto);
+        OperationDto operation = OperationMapper.toOperationDto(uuid, request);
+        OperationDto depositOperation = ewalletService.makeTransaction(operation);
+
+        return OperationMapper.toMakeOperationResponseDto(depositOperation);
     }
 }

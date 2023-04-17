@@ -1,4 +1,4 @@
-package ewallet.dto.operation;
+package ewallet.dto.operation.internal;
 
 public enum OperationTypeDto {
 
