@@ -48,7 +48,6 @@ The implementation was done as a single microservice with a standard layered str
 
 #### Improvements needed for application
 
-- Finish all the tests. All classes for tests are created but not all of the scenarios are covered. Needed tests are marked with `TODO`
 - Make endpoints secure and not accessible by everyone
 - Use cache, e.g. CaffeineCache for some of the cases, e.g. daily withdraw limit
 - Finish nice to have requirements
@@ -56,7 +55,6 @@ The implementation was done as a single microservice with a standard layered str
 - Add logging functionality to the classes
 - Complete postman collections with all cases
 - Remove Spring Data JPA and have querying API like dslContext
-- Implement pessimistic or optimistic lock when fetching account balances
 - Add Swagger-UI
 - Fix response handler for exceptions
 - Make separate Customer microserice
